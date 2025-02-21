@@ -6,6 +6,6 @@ def remove_duplicates_numpy(arr):
     return _  # Sort indices to maintain order
 
 # Example usage
-arr = np.array([[3, 1], [2, 3], [4, 2], [5, 1], [4, 2]])
+arr = np.array([[3, 1], [2, 3], [4, 2], [5, 1], [4, 2], [6, 2], [2, 4]])
 result = remove_duplicates_numpy(arr)
 print(result)  # Output: [3 1 2 4 5]
