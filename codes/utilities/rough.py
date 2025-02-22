@@ -1,11 +1,12 @@
 import numpy as np
+from imp_funs import *
 
 
-def remove_duplicates_numpy(arr):
-    _ = np.unique(arr, axis = 0)  # Get unique values while keeping order
-    return _  # Sort indices to maintain order
+ 
 
 # Example usage
-arr = np.array([[3, 1], [2, 3], [4, 2], [5, 1], [4, 2], [6, 2], [2, 4]])
-result = remove_duplicates_numpy(arr)
+# print(np.where(np.array([2, 3, 4])==4)[0][0])
+arr = np.array([[3, 1, 4], [2, 3, 2], [4, 2, 3], [5, 1, 1], [4, 2, 1], [6, 2, 3], [2, 4, 5]])
+result =  modified_fronts(arr, 0)
 print(result)  # Output: [3 1 2 4 5]
+# print(np.where((np.array([[2, 3], [3, 4]]) == [3, 4]).all(axis=1))[0][0])

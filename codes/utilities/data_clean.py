@@ -8,16 +8,6 @@ def mix_sigma(series_list, weights):
         final_sigma += series_list[i] * weights[i]
     return final_sigma
 
-def make_df_from_series(series_list):
-    df = pd.DataFrame()
-    for i in range(len(series_list)):
-        df[series_list[i].name] = series_list[i]
-    return df
-
-def df_to_np(df):
-    return df.to_numpy()
-
-
 def trapezoidal_area(arr, x_gap=0.001):
     area = np.zeros((arr.shape[0], 1))
     for i in range(arr.shape[1] - 1):
@@ -124,7 +114,7 @@ def get_cut_areas(property_p_data, sigma_values, sigma_cuts):
     """
     areas = []
     for low, high in sigma_cuts:
-        valid_cols = (sigma_values>=low) & (sigma_values<high)
+        valid_cols = (sigma_values>=low) & (sigma_values<=high)
         valid_p_data = property_p_data[:,valid_cols]
         areas.append(trapezoidal_area(valid_p_data, x_gap = 0.001))
     return np.concatenate(areas, axis = 1)

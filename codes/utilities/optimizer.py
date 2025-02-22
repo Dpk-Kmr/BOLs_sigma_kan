@@ -9,6 +9,7 @@ class GAoptimizer:
             xl = -0.019, 
             xu = 0.027, 
             pop_size = 100, 
+            n_gen = 100,
             init_pop_size = None, 
             min_x_len = 1, 
             max_x_len = 15,
@@ -19,7 +20,8 @@ class GAoptimizer:
             deletion_probability = None,
             deletion_frac = 0.5, # additional parameters to control length of gene after deletion
             addition_frac = 0.5, # additional parameters to control length of gene after addition
-            progress = 0
+            progress = 0, 
+            selection = "modified"
             ):
         self.obj_model = obj_model
         self.n_objs = n_objs
@@ -28,6 +30,7 @@ class GAoptimizer:
         self.xu = xu
         self.pool = None
         self.pop_size = pop_size
+        self.n_gen = n_gen
         self.min_x_len = min_x_len
         self.max_x_len = max_x_len
         self.mut_uniform_range = mut_uniform_range
@@ -38,11 +41,15 @@ class GAoptimizer:
         self.deletion_frac = deletion_frac
         self.addition_frac = addition_frac
         self.progress = progress
+        self.selection = selection
+
         if init_pop_size is None:
             self.init_pop_size = pop_size
         else:
             self.init_pop_size = init_pop_size
 
+        self.pop = self.init_pop()
+        self.opt_objs = [self.obj_model(cand) for cand in self.pop]
         
 
 
@@ -95,8 +102,10 @@ class GAoptimizer:
                         
                         # Apply mutation
                         mutated_candidate[i, j] += mutation
+            # clip mutated_population to keep in bounds
+            mutated_population.append(np.unique(np.clip(mutated_candidate, self.xl, self.xu), axis = 0))
+        
 
-            mutated_population.append(np.unique(mutated_candidate, axis = 0))
 
         return get_sigma_vals(mutated_population)
 
@@ -128,30 +137,39 @@ class GAoptimizer:
 
 
     def select_pop(self):
-        
-
-
-
-
-    def get_pop(self):
-        if self.pop is None:
-            self.pop = self.init_pop()
-            return self.pop
+        objs = self.opt_objs + [self.obj_model(cand) for cand in self.pop[-self.pop_size:]]
+        if self.selection == "pareto":
+            flat_fronts = flatten_recursive(get_pareto_fronts(objs))
+        elif self.selection == "modified":
+            flat_fronts = flatten_recursive(get_modified_fronts(objs, 0))
         else:
-            self.pop = self.pop + self.replace_pop(self.mutate_pop(self.pop))
-            return self.pop#self.select_pop(self.pop)
+            raise ValueError("check and change selection criteria")
+        self.opt_objs = [objs[i] for i in flat_fronts[:self.pop_size]]
+        self.pop = [self.pop[i] for i in flat_fronts[:self.pop_size]]
+        return self.pop
 
+
+    def get_next_pop(self):
+        self.pop = self.pop + self.replace_pop(self.mutate_pop(self.pop))
+        return self.select_pop()
+
+    def run(self):
+        for i in range(self.n_gen):
+            self.get_next_pop()
+            self.progress += 1/self.pop_size
+            print(self.opt_objs)
 
 
 
 if __name__ == "__main__":
+    def model(x):
+        return [int(np.sum(x[:,0:1]).item()), np.sum(x[:,1:2]**2).item()]
     optim = GAoptimizer(
-        3, pop_size = 100
-    )
-    _ = optim.get_pop()
+        model, pop_size = 8, xl = -2, xu = 2, n_gen = 500, selection="pareto", 
+        min_x_len = 1, 
+        max_x_len = 4,
+        mut_uniform_range=(-1.01, 1.01), 
+        mut_normal_std = 0.505
 
-    # print(optim.mutate_pop(optim.init_pop()))
-    __ = optim.get_pop()
-    print(len(_), len(__))
-    # for i, j in zip(_, __):
-    #     print(len(i), len(j))
+    )
+    optim.run()
