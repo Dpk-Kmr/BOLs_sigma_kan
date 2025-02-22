@@ -83,24 +83,33 @@ def process_property_data(data, cleaned_pure_sigma_df):
     composition = []
     mole_fractions = []
 
-    pure_components = ["DBU", "BuOH", "hol", 'mol', 'eol']
     _ = data['CO2BOL']
     for i in _:
         composition.append([i[-4], i[-2]])
         components.append([i[:3], i[4:-6]])
         mole_fractions.append([float(i[-4])/(float(i[-4])+float(i[-2])), float(i[-2])/(float(i[-4])+float(i[-2]))])
-
+    molar_mass = {
+        "DBU": 152.24, 
+        "BuOH": 74.12, 
+        "HexOH": 102.17, 
+        'EGME': 76.09, 
+        'EGEE': 90.12
+    }
     # Collect property data
     property_all_data = []
     for i in data['CO2BOL'].values:
         for j in list(data.columns)[1:]:
             property_all_data.append([])
-            property_all_data[-1] += [float(j[:-2]), ]
+            property_all_data[-1] += [float(j[:-2]), ] # added temperature as first column
             components = [i[:3], i[4:-6]]
             mole_fractions = [float(i[-4])/(float(i[-4])+float(i[-2])), float(i[-2])/(float(i[-4])+float(i[-2]))]
+            # added combined molar mass as 2nd column
+            property_all_data[-1] += [mole_fractions[0]*molar_mass[components[0]] + mole_fractions[1]*molar_mass[components[1]]]
             c1 = cleaned_pure_sigma_df[components[0]]
             c2 = cleaned_pure_sigma_df[components[1]]
+            # added combined sigma values as additional columns
             property_all_data[-1] += list(mix_sigma([c1, c2], mole_fractions))
+            # added property value as last column
             property_all_data[-1] += [float(data[data['CO2BOL'] == i][j]), ]
     property_all_data_np = np.array(property_all_data)
     property_all_data_np = property_all_data_np[~np.isnan(property_all_data_np).any(axis=1)]
@@ -174,3 +183,10 @@ def descale_data(X_data = None, y_data = None, x_scaler = None, y_scaler = None)
         y_data = y_scaler.inverse_transform(y_data)
     return X_data, y_data
 
+
+if __name__ == "__main__":
+    density_data, viscosity_data, vapor_pressure_data, cleaned_pure_sigma_df, sigma_values = load_data()
+    processed_d_data = process_property_data(density_data, cleaned_pure_sigma_df)
+    print(processed_d_data[:,1])
+    # print(density_data)
+    print(sigma_values.shape)
