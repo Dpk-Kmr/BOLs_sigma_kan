@@ -2,6 +2,12 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
+import warnings
+
+# Suppress FutureWarnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+
 def mix_sigma(series_list, weights):
     final_sigma = pd.Series(np.zeros(len(series_list[0])), index=series_list[0].index)
     for i in range(len(series_list)):
@@ -117,14 +123,15 @@ def process_property_data(data, cleaned_pure_sigma_df):
 
 
 
-def get_cut_areas(property_p_data, sigma_values, sigma_cuts):
+def get_cut_areas(property_p_data, sigma_values, sigma_cuts, other_feats = (0, 1)):
     """
     sigma_cuts is a list with elements as [low, high] for each cut
     """
     areas = []
     for low, high in sigma_cuts:
+        low, high = min([low, high]), max([low, high])
         valid_cols = (sigma_values>=low) & (sigma_values<=high)
-        valid_p_data = property_p_data[:,valid_cols]
+        valid_p_data = np.delete(property_p_data, other_feats, axis=1)[:,valid_cols]
         areas.append(trapezoidal_area(valid_p_data, x_gap = 0.001))
     return np.concatenate(areas, axis = 1)
 
@@ -135,58 +142,129 @@ def get_uniform_cuts(gap, _start = -0.019, _end = 0.027):
         _start += gap
     return cuts
 
-def merge_cuts_and_other_feats(cut_areas, other_feats):
+def merge_cuts_and_other_feats(cut_areas_data, other_feats_data):
     # both must be 2D array
-    return np.hstack((cut_areas, other_feats))
+    return np.hstack((cut_areas_data, other_feats_data))
+
+
+def final_data(property_p_xdata, sigma_values, sigma_cuts, other_feats = (0, 1)):
+    cut_areas_data = get_cut_areas(property_p_xdata, sigma_values, sigma_cuts, other_feats = other_feats)
+    other_feats_data = property_p_xdata[:,other_feats]
+    return merge_cuts_and_other_feats(cut_areas_data, other_feats_data)
 
 def get_train_val_test(X_data, y_data, test_size = 0.15, val_size = 0.15, random_split = True):
-    rand_ind = np.random.permutation(len(X_data))
-    X_data = X_data[rand_ind]
-    y_data = y_data[rand_ind]
+    if random_split:
+        rand_ind = np.random.permutation(len(X_data))
+        X_data = X_data[rand_ind]
+        y_data = y_data[rand_ind]
     X_test = X_data[int(len(X_data)*(1-test_size)):]
     y_test = y_data[int(len(X_data)*(1-test_size)):]
     X_val = X_data[int(len(X_data)*(1-test_size-val_size)):int(len(X_data)*(1-test_size))]
     y_val = y_data[int(len(X_data)*(1-test_size-val_size)):int(len(X_data)*(1-test_size))]
     X_train = X_data[:int(len(X_data)*(1-test_size-val_size))]
     y_train = y_data[:int(len(X_data)*(1-test_size-val_size))]
-    return X_train, X_val, X_test, y_train, y_val, y_test, rand_ind
+    return X_train, X_val, X_test, y_train, y_val, y_test
 
-def scale_data(X_train, X_val, X_test, y_train, y_val, y_test, method = 'standard'):
+def scale_data(X_train=None, X_val=None, X_test=None, 
+               y_train=None, y_val=None, y_test=None, 
+               method='standard'):
+    """
+    Scales the provided training, validation, and test datasets using the specified method.
+
+    Parameters:
+    - X_train, X_val, X_test: Feature datasets
+    - y_train, y_val, y_test: Target datasets
+    - method: 'standard' for StandardScaler, 'min_max' for MinMaxScaler
+
+    Returns:
+    - Dictionary containing scaled datasets and scalers
+    """
+    
+    # Choose the scaling method
     if method == 'standard':
         x_scaler = StandardScaler()
-        X_train = x_scaler.fit_transform(X_train)
-        X_val = x_scaler.transform(X_val)
-        X_test = x_scaler.transform(X_test)
         y_scaler = StandardScaler()
-        y_train = y_scaler.fit_transform(y_train)
-        y_val = y_scaler.transform(y_val)
-        y_test = y_scaler.transform(y_test)
-
     elif method == 'min_max':
         x_scaler = MinMaxScaler()
-        X_train = x_scaler.fit_transform(X_train)
-        X_val = x_scaler.transform(X_val)
-        X_test = x_scaler.transform(X_test)
         y_scaler = MinMaxScaler()
-        y_train = y_scaler.fit_transform(y_train)
-        y_val = y_scaler.transform(y_val)
-        y_test = y_scaler.transform(y_test)
-
     else:
         raise ValueError("Invalid scaling method. Choose 'standard' or 'min_max'.")
-    return X_train, X_val, X_test, y_train, y_val, y_test, x_scaler, y_scaler
+    
+    # Function to safely scale data
+    def safe_transform(scaler, data, fit=False):
+        if data is not None:
+            if fit:
+                return scaler.fit_transform(data)
+            else:
+                return scaler.transform(data)
+        return None
+
+    # Scale feature datasets
+    X_train = safe_transform(x_scaler, X_train, fit=True)
+    X_val = safe_transform(x_scaler, X_val)
+    X_test = safe_transform(x_scaler, X_test)
+
+    # Scale target datasets (reshape if necessary)
+    if y_train is not None:
+        y_train = safe_transform(y_scaler, y_train, fit=True)
+    if y_val is not None:
+        y_val = safe_transform(y_scaler, y_val)
+    if y_test is not None:
+        y_test = safe_transform(y_scaler, y_test)
+
+    return {
+        "X_train": X_train, "X_val": X_val, "X_test": X_test, 
+        "y_train": y_train, "y_val": y_val, "y_test": y_test, 
+        "X_scaler": x_scaler, "y_scaler": y_scaler
+    }
+
+
 
 def descale_data(X_data = None, y_data = None, x_scaler = None, y_scaler = None):
     if X_data is not None:
         X_data = x_scaler.inverse_transform(X_data)
     if y_data is not None:
         y_data = y_scaler.inverse_transform(y_data)
-    return X_data, y_data
+    return {"X_data": X_data, "y_data": y_data}
 
 
-if __name__ == "__main__":
+def get_complete_data_without_cut(output_cols = (-1, ), val_size = 0.15, test_size = 0.15, random_split = True):
     density_data, viscosity_data, vapor_pressure_data, cleaned_pure_sigma_df, sigma_values = load_data()
     processed_d_data = process_property_data(density_data, cleaned_pure_sigma_df)
-    print(processed_d_data[:,1])
-    # print(density_data)
-    print(sigma_values.shape)
+    processed_v_data = process_property_data(viscosity_data, cleaned_pure_sigma_df)
+    processed_vp_data = process_property_data(vapor_pressure_data, cleaned_pure_sigma_df)
+
+    X_d_train, X_d_val, X_d_test, y_d_train, y_d_val, y_d_test = \
+        get_train_val_test(
+            np.delete(processed_d_data, output_cols, axis=1), processed_d_data[:,output_cols], 
+            val_size = val_size, test_size = test_size, random_split = random_split)
+
+    X_v_train, X_v_val, X_v_test, y_v_train, y_v_val, y_v_test = \
+        get_train_val_test(
+            np.delete(processed_v_data, output_cols, axis=1), processed_v_data[:,output_cols], 
+            val_size = val_size, test_size = test_size, random_split = random_split)
+    
+    X_vp_train, X_vp_val, X_vp_test, y_vp_train, y_vp_val, y_vp_test = \
+        get_train_val_test(
+            np.delete(processed_vp_data, output_cols, axis=1), processed_vp_data[:,output_cols], 
+            val_size = val_size, test_size = test_size, random_split = random_split)
+
+    return {"d_data": {"X_train": X_d_train, 
+                       "X_val": X_d_val, 
+                       "X_test": X_d_test, 
+                       "y_train": y_d_train, 
+                       "y_val": y_d_val, 
+                       "y_test": y_d_test}, 
+            "v_data": {"X_train": X_v_train, 
+                       "X_val": X_v_val, 
+                       "X_test": X_v_test, 
+                       "y_train": y_v_train, 
+                       "y_val": y_v_val, 
+                       "y_test": y_v_test}, 
+            "vp_data": {"X_train": X_vp_train, 
+                       "X_val": X_vp_val, 
+                       "X_test": X_vp_test, 
+                       "y_train": y_vp_train, 
+                       "y_val": y_vp_val, 
+                       "y_test": y_vp_test},
+            "sigma_values": sigma_values}

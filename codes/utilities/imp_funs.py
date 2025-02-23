@@ -1,5 +1,4 @@
 import numpy as np
-import random
 
 def get_sigma_vals(pop):
     sigma_pop = []
