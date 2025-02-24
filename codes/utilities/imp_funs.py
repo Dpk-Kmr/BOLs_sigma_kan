@@ -8,7 +8,8 @@ def get_sigma_vals(pop):
         sigma_pop.append(np.unique(np.vstack((min_float, max_float)).T, axis = 0))
     return sigma_pop
 
-def shuffle_arr(arr):
+def shuffle_arr(arr, random_state=42):
+    np.random.seed(random_state)
     return arr[np.random.permutation(arr.shape[0])]
 
 

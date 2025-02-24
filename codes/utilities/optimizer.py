@@ -21,7 +21,8 @@ class GAoptimizer:
             deletion_frac = 0.5, # additional parameters to control length of gene after deletion
             addition_frac = 0.5, # additional parameters to control length of gene after addition
             progress = 0, 
-            selection = "modified"
+            selection = "modified",
+            random_state=42
             ):
         self.obj_model = obj_model
         self.n_objs = n_objs
@@ -42,6 +43,7 @@ class GAoptimizer:
         self.addition_frac = addition_frac
         self.progress = progress
         self.selection = selection
+        self.random_state = random_state
         
 
 
@@ -50,6 +52,7 @@ class GAoptimizer:
         else:
             self.init_pop_size = init_pop_size
 
+        np.random.seed(self.random_state)  # Set global random seed
         self.pop = self.init_pop()
         self.opt_objs = [self.obj_model(cand) for cand in self.pop]
         self.current_gen = 0
@@ -58,6 +61,7 @@ class GAoptimizer:
 
 
     def init_pop(self):
+        np.random.seed(self.random_state)
         rand_gene_size = np.random.randint(self.min_x_len, self.max_x_len+1, self.init_pop_size)
         self.pop = []
         for igene_size in rand_gene_size:
@@ -81,7 +85,7 @@ class GAoptimizer:
         Returns:
         - List of mutated candidate solutions.
         """
-
+        np.random.seed(self.random_state)  # Ensuring reproducibility
         mutated_population = []
         for candidate in population:
             # Adaptive mutation probability if not provided
@@ -113,6 +117,7 @@ class GAoptimizer:
         return get_sigma_vals(mutated_population)
 
     def replace_pop(self, population):
+        np.random.seed(self.random_state)  # Ensuring reproducibility
         self.pool = np.vstack(self.pop)
         len_pool = self.pool.shape[0]
         replaced_population = []
@@ -134,7 +139,7 @@ class GAoptimizer:
                 replaced_candidate.append(self.pool[np.random.randint(0, len_pool)])
 
             # shuffling and trimming step
-            replaced_candidate = shuffle_arr(np.unique(np.array(replaced_candidate), axis = 0))[:self.max_x_len]
+            replaced_candidate = shuffle_arr(np.unique(np.array(replaced_candidate), axis = 0), random_state = self.random_state)[:self.max_x_len]
             replaced_population.append(replaced_candidate)
         return get_sigma_vals(replaced_population)
 
@@ -175,7 +180,7 @@ if __name__ == "__main__":
     def model(x):
         return [int(np.sum(x[:,0:1]).item()), np.sum(x[:,1:2]**2).item()]
     optim = GAoptimizer(
-        model, pop_size = 8, xl = -2, xu = 2, n_gen = 500, selection="hybrid", 
+        model, pop_size = 8, xl = -2, xu = 2, n_gen = 10, selection="hybrid", 
         min_x_len = 1, 
         max_x_len = 4,
         mut_uniform_range=(-1.01, 1.01), 

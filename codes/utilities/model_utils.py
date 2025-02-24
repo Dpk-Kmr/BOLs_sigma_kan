@@ -30,6 +30,10 @@ warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
 
 
+# Set global random seed
+random_state = 42
+np.random.seed(random_state)
+
 
 
 
@@ -89,7 +93,9 @@ def perform_model(
         sigma_values=None,
         sigma_cuts=None,
         other_feats=(0, 1),
-        scale=None):
+        scale=None, 
+        random_state = 42):
+    np.random.seed(random_state)
     # Apply sigma cut filtering if provided
     if sigma_cuts is not None:
         X_train = final_data(X_train, sigma_values, sigma_cuts, other_feats=other_feats)
@@ -100,7 +106,7 @@ def perform_model(
     if scale is not None:
         scaled_data = scale_data(X_train=X_train, X_val=X_val, X_test=None, 
                                  y_train=y_train, y_val=y_val, y_test=None, 
-                                 method=scale)
+                                 method=scale, random_state = random_state)
         
         # Retrieve scaled values
         X_train = scaled_data["X_train"]
@@ -134,7 +140,7 @@ def perform_model(
 
 def perform_model_cv(model, X, y, 
                      sigma_values=None, sigma_cuts=None, other_feats=(0, 1), scale=None, 
-                     n_splits = 5, kf_shuffle = True,random_state = 42):
+                     n_splits = 5, kf_shuffle = True, random_state = 42):
     """
     Perform 5-Fold Cross-Validation on the given model.
     
@@ -147,6 +153,7 @@ def perform_model_cv(model, X, y,
     Returns:
     - Dictionary containing average performance metrics across 5 folds.
     """
+    np.random.seed(random_state)
     results = {
         "train": {"MAE": [], "MSE": [], "RMSE": [], "MAPE": [], "R2 Score": [], "Adjusted R2 Score": []},
         "val": {"MAE": [], "MSE": [], "RMSE": [], "MAPE": [], "R2 Score": [], "Adjusted R2 Score": []}
@@ -168,7 +175,8 @@ def perform_model_cv(model, X, y,
             sigma_values=sigma_values, 
             sigma_cuts=sigma_cuts, 
             other_feats=other_feats, 
-            scale=scale
+            scale=scale,
+            random_state = random_state
         )
         
         # Store fold results
@@ -236,23 +244,23 @@ models = {
     "Theil-Sen Regressor": TheilSenRegressor(),
 
     # Tree-Based Models
-    "Decision Tree": DecisionTreeRegressor(random_state=42),
-    "Extra Trees": ExtraTreesRegressor(n_estimators=100, random_state=42),
-    "Random Forest": RandomForestRegressor(n_estimators=100, random_state=42),
-    "Gradient Boosting": GradientBoostingRegressor(n_estimators=100, random_state=42),
-    "Hist Gradient Boosting": HistGradientBoostingRegressor(random_state=42),
+    "Decision Tree": DecisionTreeRegressor(random_state=random_state),
+    "Extra Trees": ExtraTreesRegressor(n_estimators=100, random_state=random_state),
+    "Random Forest": RandomForestRegressor(n_estimators=100, random_state=random_state),
+    "Gradient Boosting": GradientBoostingRegressor(n_estimators=100, random_state=random_state),
+    "Hist Gradient Boosting": HistGradientBoostingRegressor(random_state=random_state),
 
     # Boosting Models
-    "XGBoost": XGBRegressor(objective="reg:squarederror", n_estimators=100, random_state=42),
+    "XGBoost": XGBRegressor(objective="reg:squarederror", n_estimators=100, random_state=random_state),
     # "LightGBM": LGBMRegressor(n_estimators=100, random_state=42),
-    "AdaBoost": AdaBoostRegressor(n_estimators=100, random_state=42),
+    "AdaBoost": AdaBoostRegressor(n_estimators=100, random_state=random_state),
 
     # Distance-Based Models
     "Support Vector Regression": SVR(kernel="rbf"),
     "K-Nearest Neighbors": KNeighborsRegressor(n_neighbors=5),
 
     # Neural Networks
-    "MLP Regressor": MLPRegressor(hidden_layer_sizes=(128, 64, 32), activation='relu', solver='adam', max_iter=500, random_state=42, alpha = 0.001),
+    "MLP Regressor": MLPRegressor(hidden_layer_sizes=(128, 64, 32), activation='relu', solver='adam', max_iter=500, random_state=random_state, alpha = 0.001),
     # "Keras Neural Network": KerasRegressorWrapper()  # Automatically detects input size
 }
 try:
@@ -260,6 +268,28 @@ try:
 except:
     None
 
+model_acronyms = {
+    "Linear Regression": "Linear",
+    "Ridge Regression": "Ridge",
+    "Lasso Regression": "Lasso",
+    "ElasticNet": "ElasticNet",
+    "Bayesian Ridge": "BayesR",
+    "SGD Regressor": "SGDR",
+    "Huber Regressor": "Huber",
+    "Theil-Sen Regressor": "Theil-Sen",
+    "Decision Tree": "DT",
+    "Extra Trees": "ET",
+    "Random Forest": "RF",
+    "Gradient Boosting": "GradBoost",
+    "Hist Gradient Boosting": "HGBoost",
+    "XGBoost": "XGBoost",
+    "LightGBM": "LightGBM",
+    "AdaBoost": "AdaBoost",
+    "Support Vector Regression": "SVR",
+    "K-Nearest Neighbors": "KNN",
+    "MLP Regressor": "NN",
+    "CatBoost": "CatBoost"
+} 
 
 # all_data = get_complete_data_without_cut(output_cols = (-1, ), val_size = 0.0)
 # X = all_data["vp_data"]["X_train"]
@@ -326,7 +356,11 @@ class MOO_model:
         self.kpi = kpi
         self.kpi_data = kpi_data
         self.kpi_sign = kpi_sign
+
+        np.random.seed(self.random_state)
+
     def get_objs(self, sigma_cuts):
+        np.random.seed(self.random_state)
         if self.cv:
             all_kpis = perform_model_cv(
                 self.base_model, 
@@ -350,44 +384,45 @@ class MOO_model:
                 sigma_values=self.sigma_values, 
                 sigma_cuts=sigma_cuts, 
                 other_feats=self.other_feats, 
-                scale=self.scale)
+                scale=self.scale, 
+                random_state = self.random_state)
             return [len(sigma_cuts), all_kpis[self.kpi_data][self.kpi]]
 
 
-        
-from optimizer import *
+if __name__ == "__main__":   
+    from optimizer import *
 
-all_data = get_complete_data_without_cut(output_cols = (-1, ), val_size = 0.0)
-X = all_data["vp_data"]["X_train"]
-y = all_data["vp_data"]["y_train"]
-sigma_values = all_data["sigma_values"]
-moo_model = MOO_model(
-    base_model = models["XGBoost"], 
-    X = X, 
-    y = y, 
-    X_train=None, 
-    X_val=None, 
-    y_train=None, 
-    y_val=None, 
-    sigma_values=sigma_values,
-    other_feats=(0, 1),
-    scale="min_max",
-    cv = True, 
-    n_splits = 5, 
-    kf_shuffle = True,
-    random_state = 42, 
-    kpi = ["R2 Score", ],
-    kpi_sign = [-1, ],
-    kpi_data = ["val", ]
-)
+    all_data = get_complete_data_without_cut(output_cols = (-1, ), val_size = 0.0)
+    X = all_data["vp_data"]["X_train"]
+    y = all_data["vp_data"]["y_train"]
+    sigma_values = all_data["sigma_values"]
+    moo_model = MOO_model(
+        base_model = models["XGBoost"], 
+        X = X, 
+        y = y, 
+        X_train=None, 
+        X_val=None, 
+        y_train=None, 
+        y_val=None, 
+        sigma_values=sigma_values,
+        other_feats=(0, 1),
+        scale="min_max",
+        cv = True, 
+        n_splits = 5, 
+        kf_shuffle = True,
+        random_state = 42, 
+        kpi = ["R2 Score", ],
+        kpi_sign = [-1, ],
+        kpi_data = ["val", ]
+    )
 
-model = moo_model.get_objs
-optim = GAoptimizer(
-    model, pop_size = 100, n_gen = 2, selection="hybrid", 
-    min_x_len = 1, 
-    max_x_len = 15,
-    mut_uniform_range=(-0.01, 0.01), 
-    mut_normal_std = 0.005,
-    init_pop_size=500
-)
-optim.run()
+    model = moo_model.get_objs
+    optim = GAoptimizer(
+        model, pop_size = 100, n_gen = 2, selection="hybrid", 
+        min_x_len = 1, 
+        max_x_len = 15,
+        mut_uniform_range=(-0.01, 0.01), 
+        mut_normal_std = 0.005,
+        init_pop_size=500
+    )
+    optim.run()

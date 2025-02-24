@@ -1,5 +1,4 @@
-_ = [1, 2, 3, 5, 7, 8]
-__ = [1, 6, 4, 5, 2, 8]
-_ = 0
-___ = {_: 6}
-print(___)
+from data_clean import *
+
+print(get_uniform_cuts(0.001, _start = -0.019, _end = 0.027, n_cuts = 3))
+

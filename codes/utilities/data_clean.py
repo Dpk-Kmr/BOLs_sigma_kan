@@ -135,12 +135,25 @@ def get_cut_areas(property_p_data, sigma_values, sigma_cuts, other_feats = (0, 1
         areas.append(trapezoidal_area(valid_p_data, x_gap = 0.001))
     return np.concatenate(areas, axis = 1)
 
-def get_uniform_cuts(gap, _start = -0.019, _end = 0.027):
+def get_uniform_cuts(gap, _start = -0.019, _end = 0.027, n_cuts = None):
     cuts = []
-    while _start < _end:
-        cuts.append([_start, _start + gap])
-        _start += gap
-    return cuts
+    if n_cuts is None:
+        while _start < _end:
+            cuts.append([round(_start, ndigits = 3), min(round(_start + gap, ndigits = 3), _end)])
+            _start += gap
+        return cuts
+    else:
+        if n_cuts < 1:
+            raise ValueError("n_cuts must be greater than 0")
+        if n_cuts == 1:
+            return [[_start, _end],]
+        else:
+            gap = _end - _start
+            while len(cuts) <= n_cuts:
+                cuts = get_uniform_cuts(gap, _start = -0.019, _end = 0.027, n_cuts = None)
+                gap -= 0.001
+            return get_uniform_cuts(gap + 0.002, _start = -0.019, _end = 0.027, n_cuts = None)
+
 
 def merge_cuts_and_other_feats(cut_areas_data, other_feats_data):
     # both must be 2D array
@@ -152,8 +165,9 @@ def final_data(property_p_xdata, sigma_values, sigma_cuts, other_feats = (0, 1))
     other_feats_data = property_p_xdata[:,other_feats]
     return merge_cuts_and_other_feats(cut_areas_data, other_feats_data)
 
-def get_train_val_test(X_data, y_data, test_size = 0.15, val_size = 0.15, random_split = True):
+def get_train_val_test(X_data, y_data, test_size = 0.15, val_size = 0.15, random_split = True, random_state = 42):
     if random_split:
+        np.random.seed(random_state)
         rand_ind = np.random.permutation(len(X_data))
         X_data = X_data[rand_ind]
         y_data = y_data[rand_ind]
@@ -167,7 +181,7 @@ def get_train_val_test(X_data, y_data, test_size = 0.15, val_size = 0.15, random
 
 def scale_data(X_train=None, X_val=None, X_test=None, 
                y_train=None, y_val=None, y_test=None, 
-               method='standard'):
+               method='standard', random_state=42):
     """
     Scales the provided training, validation, and test datasets using the specified method.
 
@@ -179,6 +193,7 @@ def scale_data(X_train=None, X_val=None, X_test=None,
     Returns:
     - Dictionary containing scaled datasets and scalers
     """
+    np.random.seed(random_state)
     
     # Choose the scaling method
     if method == 'standard':
@@ -228,7 +243,7 @@ def descale_data(X_data = None, y_data = None, x_scaler = None, y_scaler = None)
     return {"X_data": X_data, "y_data": y_data}
 
 
-def get_complete_data_without_cut(output_cols = (-1, ), val_size = 0.15, test_size = 0.15, random_split = True):
+def get_complete_data_without_cut(output_cols = (-1, ), val_size = 0.15, test_size = 0.15, random_split = True, random_state = 42):
     density_data, viscosity_data, vapor_pressure_data, cleaned_pure_sigma_df, sigma_values = load_data()
     processed_d_data = process_property_data(density_data, cleaned_pure_sigma_df)
     processed_v_data = process_property_data(viscosity_data, cleaned_pure_sigma_df)
@@ -237,17 +252,17 @@ def get_complete_data_without_cut(output_cols = (-1, ), val_size = 0.15, test_si
     X_d_train, X_d_val, X_d_test, y_d_train, y_d_val, y_d_test = \
         get_train_val_test(
             np.delete(processed_d_data, output_cols, axis=1), processed_d_data[:,output_cols], 
-            val_size = val_size, test_size = test_size, random_split = random_split)
+            val_size = val_size, test_size = test_size, random_split = random_split, random_state = random_state)
 
     X_v_train, X_v_val, X_v_test, y_v_train, y_v_val, y_v_test = \
         get_train_val_test(
             np.delete(processed_v_data, output_cols, axis=1), processed_v_data[:,output_cols], 
-            val_size = val_size, test_size = test_size, random_split = random_split)
+            val_size = val_size, test_size = test_size, random_split = random_split, random_state = random_state)
     
     X_vp_train, X_vp_val, X_vp_test, y_vp_train, y_vp_val, y_vp_test = \
         get_train_val_test(
             np.delete(processed_vp_data, output_cols, axis=1), processed_vp_data[:,output_cols], 
-            val_size = val_size, test_size = test_size, random_split = random_split)
+            val_size = val_size, test_size = test_size, random_split = random_split, random_state = random_state)
 
     return {"d_data": {"X_train": X_d_train, 
                        "X_val": X_d_val, 
@@ -268,3 +283,5 @@ def get_complete_data_without_cut(output_cols = (-1, ), val_size = 0.15, test_si
                        "y_val": y_vp_val, 
                        "y_test": y_vp_test},
             "sigma_values": sigma_values}
+
+
