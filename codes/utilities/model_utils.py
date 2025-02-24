@@ -4,8 +4,10 @@ import numpy as np
 from sklearn.linear_model import ElasticNet, BayesianRidge, SGDRegressor, HuberRegressor, TheilSenRegressor
 from sklearn.ensemble import ExtraTreesRegressor, HistGradientBoostingRegressor
 # from lightgbm import LGBMRegressor
-from catboost import CatBoostRegressor
-from xgboost import XGBRegressor
+try:
+    from catboost import CatBoostRegressor
+except:
+    print("WARNING: catboost is not installed")
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, AdaBoostRegressor
@@ -243,7 +245,6 @@ models = {
     # Boosting Models
     "XGBoost": XGBRegressor(objective="reg:squarederror", n_estimators=100, random_state=42),
     # "LightGBM": LGBMRegressor(n_estimators=100, random_state=42),
-    "CatBoost": CatBoostRegressor(iterations=100, depth=6, learning_rate=0.1, loss_function='RMSE', verbose=0),
     "AdaBoost": AdaBoostRegressor(n_estimators=100, random_state=42),
 
     # Distance-Based Models
@@ -251,9 +252,13 @@ models = {
     "K-Nearest Neighbors": KNeighborsRegressor(n_neighbors=5),
 
     # Neural Networks
-    "MLP Regressor": MLPRegressor(hidden_layer_sizes=(128, 64, 32), activation='relu', solver='adam', max_iter=500, random_state=42),
+    "MLP Regressor": MLPRegressor(hidden_layer_sizes=(128, 64, 32), activation='relu', solver='adam', max_iter=500, random_state=42, alpha = 0.001),
     # "Keras Neural Network": KerasRegressorWrapper()  # Automatically detects input size
 }
+try:
+    models["CatBoost"] = CatBoostRegressor(iterations=100, depth=6, learning_rate=0.1, loss_function='RMSE', verbose=0)
+except:
+    None
 
 
 # all_data = get_complete_data_without_cut(output_cols = (-1, ), val_size = 0.0)
@@ -349,9 +354,6 @@ class MOO_model:
             return [len(sigma_cuts), all_kpis[self.kpi_data][self.kpi]]
 
 
-
-
-        
         
 from optimizer import *
 
@@ -360,7 +362,7 @@ X = all_data["vp_data"]["X_train"]
 y = all_data["vp_data"]["y_train"]
 sigma_values = all_data["sigma_values"]
 moo_model = MOO_model(
-    base_model = models["AdaBoost"], 
+    base_model = models["XGBoost"], 
     X = X, 
     y = y, 
     X_train=None, 
@@ -374,16 +376,18 @@ moo_model = MOO_model(
     n_splits = 5, 
     kf_shuffle = True,
     random_state = 42, 
-    kpi = "R2 Score",
-    kpi_data = "val"
+    kpi = ["R2 Score", ],
+    kpi_sign = [-1, ],
+    kpi_data = ["val", ]
 )
 
 model = moo_model.get_objs
 optim = GAoptimizer(
-    model, pop_size = 15, n_gen = 10, selection="pareto", 
+    model, pop_size = 100, n_gen = 2, selection="hybrid", 
     min_x_len = 1, 
     max_x_len = 15,
-    mut_uniform_range=(-0.02, 0.02), 
-    mut_normal_std = 0.01,
+    mut_uniform_range=(-0.01, 0.01), 
+    mut_normal_std = 0.005,
+    init_pop_size=500
 )
 optim.run()

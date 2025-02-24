@@ -111,7 +111,22 @@ def flatten_recursive(lst):
     return flat_list
 
 
+def front_merger(front1, front2):
+    if len(front1) != len(front2):
+        raise ValueError("both fronts should be equal")
+    merged_front = []
+    seen = set()
 
+    for a, b in zip(front1, front2):
+        if a not in seen:
+            merged_front.append(a)
+            seen.add(a)
+        if b not in seen:
+            merged_front.append(b)
+            seen.add(b)
+        if len(merged_front) == len(front1):
+            break
+    return merged_front
 
 if __name__ == "__main__":
     points = np.array([[3, 1, 4], [2, 3, 2], [4, 2, 3], [5, 1, 1], [4, 2, 1], [6, 2, 3], [2, 4, 5]])

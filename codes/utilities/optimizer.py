@@ -12,7 +12,7 @@ class GAoptimizer:
             n_gen = 100,
             init_pop_size = None, 
             min_x_len = 1, 
-            max_x_len = 15,
+            max_x_len = 6,
             mut_uniform_range=(-0.01, 0.01), 
             mut_normal_std = 0.005,
             mutation_probability = None,
@@ -42,6 +42,8 @@ class GAoptimizer:
         self.addition_frac = addition_frac
         self.progress = progress
         self.selection = selection
+        
+
 
         if init_pop_size is None:
             self.init_pop_size = pop_size
@@ -50,7 +52,8 @@ class GAoptimizer:
 
         self.pop = self.init_pop()
         self.opt_objs = [self.obj_model(cand) for cand in self.pop]
-        
+        self.current_gen = 0
+        self.history = {self.current_gen: {"pop": self.pop, "obj": self.opt_objs}}
 
 
 
@@ -87,7 +90,6 @@ class GAoptimizer:
 
             # Copy candidate to avoid modifying original
             mutated_candidate = candidate.copy()
-
             for i in range(candidate.shape[0]):
                 for j in range(candidate.shape[1]):
                     if np.random.rand() < self.mutation_probability:  # Apply mutation based on probability
@@ -101,16 +103,17 @@ class GAoptimizer:
                             mutation = np.random.normal(0, self.mut_normal_std)
                         
                         # Apply mutation
+                        
                         mutated_candidate[i, j] += mutation
+            
+            mutated_candidate = np.clip(mutated_candidate, self.xl, self.xu)
             # clip mutated_population to keep in bounds
-            mutated_population.append(np.unique(np.clip(mutated_candidate, self.xl, self.xu), axis = 0))
+            mutated_population.append(np.unique(mutated_candidate, axis = 0))
         
-
-
         return get_sigma_vals(mutated_population)
 
     def replace_pop(self, population):
-        self.pool = np.vstack(population)
+        self.pool = np.vstack(self.pop)
         len_pool = self.pool.shape[0]
         replaced_population = []
         for candidate in population:
@@ -131,7 +134,7 @@ class GAoptimizer:
                 replaced_candidate.append(self.pool[np.random.randint(0, len_pool)])
 
             # shuffling and trimming step
-            replaced_candidate = shuffle_arr(np.array(replaced_candidate))[:self.max_x_len]
+            replaced_candidate = shuffle_arr(np.unique(np.array(replaced_candidate), axis = 0))[:self.max_x_len]
             replaced_population.append(replaced_candidate)
         return get_sigma_vals(replaced_population)
 
@@ -139,13 +142,17 @@ class GAoptimizer:
     def select_pop(self):
         objs = self.opt_objs + [self.obj_model(cand) for cand in self.pop[-self.pop_size:]]
         if self.selection == "pareto":
-            flat_fronts = flatten_recursive(get_pareto_fronts(objs))
+            flat_fronts = flatten_recursive(get_pareto_fronts(objs))[:self.pop_size]
         elif self.selection == "modified":
-            flat_fronts = flatten_recursive(get_modified_fronts(objs, 0))
+            flat_fronts = flatten_recursive(get_modified_fronts(objs, 0))[:self.pop_size]
+        elif self.selection == "hybrid":
+            p_fronts = flatten_recursive(get_pareto_fronts(objs))[:self.pop_size]
+            m_fronts = flatten_recursive(get_modified_fronts(objs, 0))[:self.pop_size]
+            flat_fronts = front_merger(p_fronts, m_fronts)
         else:
             raise ValueError("check and change selection criteria")
-        self.opt_objs = [objs[i] for i in flat_fronts[:self.pop_size]]
-        self.pop = [self.pop[i] for i in flat_fronts[:self.pop_size]]
+        self.opt_objs = [objs[i] for i in flat_fronts]
+        self.pop = [self.pop[i] for i in flat_fronts]
         return self.pop
 
 
@@ -156,7 +163,10 @@ class GAoptimizer:
     def run(self):
         for i in range(self.n_gen):
             self.get_next_pop()
-            self.progress += 1/self.pop_size
+            self.current_gen += 1
+            self.history[self.current_gen] = {"pop": self.pop, "obj": self.opt_objs}
+            self.progress += 1/self.n_gen
+            print(f"Progress: {self.progress} ------->------->------>------>------->------>------>")
             print(self.opt_objs)
 
 
@@ -165,7 +175,7 @@ if __name__ == "__main__":
     def model(x):
         return [int(np.sum(x[:,0:1]).item()), np.sum(x[:,1:2]**2).item()]
     optim = GAoptimizer(
-        model, pop_size = 8, xl = -2, xu = 2, n_gen = 500, selection="pareto", 
+        model, pop_size = 8, xl = -2, xu = 2, n_gen = 500, selection="hybrid", 
         min_x_len = 1, 
         max_x_len = 4,
         mut_uniform_range=(-1.01, 1.01), 
