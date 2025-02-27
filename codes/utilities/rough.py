@@ -1,4 +1,3 @@
-from data_clean import *
+_ = {mod: 1 for mod in [1, 2, 3,4 ,5]}
 
-print(get_uniform_cuts(0.001, _start = -0.019, _end = 0.027, n_cuts = 3))
-
+print(_)

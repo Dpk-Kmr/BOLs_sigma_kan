@@ -1,4 +1,5 @@
 import numpy as np
+import pickle
 
 def get_sigma_vals(pop):
     sigma_pop = []
@@ -128,6 +129,19 @@ def front_merger(front1, front2):
         if len(merged_front) == len(front1):
             break
     return merged_front
+
+def load_history(file_path):
+    try:
+        with open(file_path, "rb") as f:
+            history = pickle.load(f)
+        print(f"History loaded from {file_path}")
+        return history
+    except FileNotFoundError:
+        print(f"Error: File {file_path} not found!")
+
+
+
+
 
 if __name__ == "__main__":
     points = np.array([[3, 1, 4], [2, 3, 2], [4, 2, 3], [5, 1, 1], [4, 2, 1], [6, 2, 3], [2, 4, 5]])

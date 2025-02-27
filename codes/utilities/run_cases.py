@@ -21,7 +21,6 @@ def uniform_cut_case1(X, y, models = None, max_cuts = 2, sigma_values = None, ot
     uc_results = {}
     for n_cuts in range(1, max_cuts + 1):
         sigma_cuts = get_uniform_cuts(None, _start = -0.019, _end = 0.027, n_cuts = n_cuts)
-        print(sigma_cuts)
         X_updated = final_data(X, sigma_values, sigma_cuts, other_feats = other_feats)
         uc_results[n_cuts] = {}
         for name, model in models.items():
@@ -32,18 +31,37 @@ def uniform_cut_case1(X, y, models = None, max_cuts = 2, sigma_values = None, ot
                 scale = "min_max")
     return uc_results
 
+def opt_cut_case1(
+        X, y, pop, objs, 
+        models = None, 
+        sigma_values = None, 
+        other_feats = (0, 1), 
+        save_location = None, 
+        discrete_col_index = 0):
+    """
+
+    """
+    modified_fronts = get_modified_fronts(objs, discrete_col_index)
+    selected_pop_inds = [mf[0] for mf in modified_fronts]
+    oc_results = {}
+    for i in selected_pop_inds:
+        sigma_cuts = pop[i]
+        n_cuts = len(sigma_cuts)
+        X_updated = final_data(X, sigma_values, sigma_cuts, other_feats = other_feats)
+        oc_results[n_cuts] = {}
+        for name, model in models.items():
+            oc_results[n_cuts][name] = perform_model_cv(
+                model, 
+                X_updated, 
+                y, 
+                scale = "min_max")
+    return oc_results
+
 
 
 all_data = get_complete_data_without_cut(output_cols = (-1, ), val_size = 0.0)
 X = all_data["vp_data"]["X_train"]
 y = all_data["vp_data"]["y_train"]
-print(uniform_cut_case1(
-    X, 
-    y, 
-    models = models, 
-    max_cuts = 2, 
-    sigma_values = all_data["sigma_values"], 
-    other_feats = (0, 1), 
-    save_location = None))
+
 
 

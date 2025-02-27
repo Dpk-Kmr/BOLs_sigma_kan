@@ -1,5 +1,6 @@
 from imp_funs import *
 import numpy as np
+import pickle
 
 class GAoptimizer:
     def __init__(
@@ -165,15 +166,20 @@ class GAoptimizer:
         self.pop = self.pop + self.replace_pop(self.mutate_pop(self.pop))
         return self.select_pop()
 
-    def run(self):
+    def run(self, save_loc = None, print_res = True):
         for i in range(self.n_gen):
             self.get_next_pop()
             self.current_gen += 1
             self.history[self.current_gen] = {"pop": self.pop, "obj": self.opt_objs}
             self.progress += 1/self.n_gen
             print(f"Progress: {self.progress} ------->------->------>------>------->------>------>")
-            print(self.opt_objs)
-
+            if print_res: 
+                print(self.opt_objs)
+        # Save history to file
+        if save_loc:
+            with open(save_loc, "wb") as f:
+                pickle.dump(self.history, f)
+            print(f"History saved to {save_loc}")
 
 
 if __name__ == "__main__":
@@ -188,3 +194,4 @@ if __name__ == "__main__":
 
     )
     optim.run()
+    print(optim.history)

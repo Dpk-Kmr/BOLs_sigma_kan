@@ -408,7 +408,7 @@ if __name__ == "__main__":
         other_feats=(0, 1),
         scale="min_max",
         cv = True, 
-        n_splits = 5, 
+        n_splits = 2, 
         kf_shuffle = True,
         random_state = 42, 
         kpi = ["R2 Score", ],
