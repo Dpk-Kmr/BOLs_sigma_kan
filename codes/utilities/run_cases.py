@@ -41,8 +41,8 @@ def opt_cut_case1(
     """
 
     """
-    modified_fronts = get_modified_fronts(objs, discrete_col_index)
-    selected_pop_inds = [mf[0] for mf in modified_fronts]
+    modified_fronts = get_modified_fronts(objs, discrete_col_index, without_robin_round_ranking=True)
+    selected_pop_inds = [modified_fronts[cut_counts][0] for cut_counts in modified_fronts.keys()]
     oc_results = {}
     for i in selected_pop_inds:
         sigma_cuts = pop[i]
@@ -56,12 +56,6 @@ def opt_cut_case1(
                 y, 
                 scale = "min_max")
     return oc_results
-
-
-
-all_data = get_complete_data_without_cut(output_cols = (-1, ), val_size = 0.0)
-X = all_data["vp_data"]["X_train"]
-y = all_data["vp_data"]["y_train"]
 
 
 

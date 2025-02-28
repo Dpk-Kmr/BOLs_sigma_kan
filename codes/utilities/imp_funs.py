@@ -85,7 +85,7 @@ def round_robin_ranking(grouped_data, objs_arr):
 
 
 
-def get_modified_fronts(arr, discrete_col_index):
+def get_modified_fronts(arr, discrete_col_index, without_robin_round_ranking = False):
     """
     
     """
@@ -99,8 +99,13 @@ def get_modified_fronts(arr, discrete_col_index):
         pareto_fronts = get_pareto_fronts(objectives)
         sorted_indices = np.array(pareto_fronts, dtype=object).flatten().tolist()
         grouped_data[value] = subset[sorted_indices]
-
-    return round_robin_ranking(grouped_data, arr)
+    if without_robin_round_ranking:
+        cutwise_bests = {}
+        for cuts in grouped_data.keys():
+            cutwise_bests[cuts.item()] = [np.where((arr == i).all(axis = 1))[0][0].item() for i in grouped_data[cuts]]
+        return cutwise_bests
+    else:
+        return round_robin_ranking(grouped_data, arr)
 
 
 def flatten_recursive(lst):
