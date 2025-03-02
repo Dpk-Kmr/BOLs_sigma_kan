@@ -146,24 +146,30 @@ class GAoptimizer:
 
 
     def select_pop(self):
-        objs = self.opt_objs + [self.obj_model(cand) for cand in self.pop[-self.pop_size:]]
+        
+        # print("before selection______________________________________")
+        # print([[len(i) == j[0]] for i, j in zip(self.pop, self.opt_objs)])
         if self.selection == "pareto":
-            flat_fronts = flatten_recursive(get_pareto_fronts(objs))[:self.pop_size]
+            flat_fronts = flatten_recursive(get_pareto_fronts(self.opt_objs))[:self.pop_size]
         elif self.selection == "modified":
-            flat_fronts = flatten_recursive(get_modified_fronts(objs, 0))[:self.pop_size]
+            flat_fronts = flatten_recursive(get_modified_fronts(self.opt_objs, 0))[:self.pop_size]
         elif self.selection == "hybrid":
-            p_fronts = flatten_recursive(get_pareto_fronts(objs))[:self.pop_size]
-            m_fronts = flatten_recursive(get_modified_fronts(objs, 0))[:self.pop_size]
+            p_fronts = flatten_recursive(get_pareto_fronts(self.opt_objs))[:self.pop_size]
+            m_fronts = flatten_recursive(get_modified_fronts(self.opt_objs, 0))[:self.pop_size]
             flat_fronts = front_merger(p_fronts, m_fronts)
         else:
             raise ValueError("check and change selection criteria")
-        self.opt_objs = [objs[i] for i in flat_fronts]
+        self.opt_objs = [self.opt_objs[i] for i in flat_fronts]
         self.pop = [self.pop[i] for i in flat_fronts]
+        # print("after selection______________________________________")
+        # print([[len(i) == j[0]] for i, j in zip(self.pop, self.opt_objs)])
         return self.pop
 
 
     def get_next_pop(self):
-        self.pop = self.pop + self.replace_pop(self.mutate_pop(self.pop))
+        new_pop = self.replace_pop(self.mutate_pop(self.pop))
+        self.pop = self.pop + new_pop
+        self.opt_objs = self.opt_objs + [self.obj_model(cand) for cand in new_pop]
         return self.select_pop()
 
     def run(self, save_loc = None, print_res = True):

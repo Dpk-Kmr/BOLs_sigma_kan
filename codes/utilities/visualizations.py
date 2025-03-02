@@ -109,22 +109,25 @@ def cut_bars(
         gap_fraction = 0.5, save_location = None, dpi = 500, dtype = "val", performance = "R2 Score"):
     cut_nums = list(result_dict.keys())
     model_names = list(result_dict[cut_nums[0]].keys())
+    if_use_model = {mod: 1 for mod in model_names}
     result_dict_ = {}
     for i in cut_nums:
         result_dict_[i] = [result_dict[i][mod][dtype][performance] for mod in model_names]
 
     result_dict = result_dict_
-    if use_acronyms:
-        model_names = [model_acronyms[i] for i in model_names]
+    
     if filter_models:
-        
-        if_use_model = {mod: 1 for mod in model_names}
         for i in result_dict.keys():
             for mod, perf in zip(model_names, result_dict[i]):
                 print(mod, perf["mean"], perf["std"])
                 if perf["mean"] - perf["std"] < 0:
                         print("********************", perf["mean"], perf["std"])
                         if_use_model[mod] *= 0
+
+
+    if use_acronyms:
+        model_names = [model_acronyms[i] for i in model_names]
+    
                 
     result_dict_ = {}
     for i in cut_nums:
@@ -188,6 +191,7 @@ def two_cut_bars(
         gap_fraction = 0.5, save_location = None, dpi = 500, dtype = "val", performance = "R2 Score"):
     cut_nums = list(result_dict_optimum.keys())
     model_names = list(result_dict_optimum[cut_nums[0]].keys())
+    if_use_model = {mod: 1 for mod in model_names}
     result_dict_uniform_ = {}
     result_dict_optimum_ = {}
     for i in cut_nums:
@@ -196,18 +200,14 @@ def two_cut_bars(
 
     result_dict_uniform = result_dict_uniform_
     result_dict_optimum = result_dict_optimum_
-    if use_acronyms:
-        model_names = [model_acronyms[i] for i in model_names]
+
     if filter_models:
-        
-        if_use_model = {mod: 1 for mod in model_names}
         for i in result_dict_optimum.keys():
             for j, mod in enumerate(model_names):
                 perf1 = result_dict_uniform[i][j]
                 perf2 = result_dict_optimum[i][j]
                 if perf1["mean"] - perf1["std"] < 0 or perf2["mean"] - perf2["std"] < 0:
-                        if_use_model[mod] *= 0
-                
+                        if_use_model[mod] *= 0            
     result_dict_uniform_ = {}
     result_dict_optimum_ = {}
     for i in cut_nums:
@@ -218,7 +218,8 @@ def two_cut_bars(
 
     model_names = [mod for mod in model_names if if_use_model[mod] == 1]
 
-    
+    if use_acronyms:
+        model_names = [model_acronyms[i] for i in model_names]
 
     # Create a single figure with multiple y-axes sharing the same x-axis
     fig, ax1 = plt.subplots(figsize=figsize)
@@ -268,60 +269,67 @@ def two_cut_bars(
 
 
 all_data = get_complete_data_without_cut(output_cols = (-1, ), val_size = 0.0)
-i_data = "v"
-X = all_data[f"{i_data}_data"]["X_train"]
-y = all_data[f"{i_data}_data"]["y_train"]
-result_dict = full_data_case1(X, y)
-model_performance_bars(result_dict)
+i_datas = ["d", "v", "vp"]
+mods = ["Linear Regression", "XGBoost", "Gradient Boosting", "MLP Regressor"]
 
-# uni_cut = uniform_cut_case1(
-#     X, 
-#     y, 
-#     models = {
-#         "Decision Tree": models["Decision Tree"], 
-#         "Random Forest": models["Random Forest"], 
-#         "Extra Trees": models["Extra Trees"], 
-#         "XGBoost": models["XGBoost"], 
-#         "Gradient Boosting": models["Gradient Boosting"],
-#         "MLP Regressor": models["MLP Regressor"]
-#         }, 
-#     max_cuts = 6, 
-#     sigma_values = all_data["sigma_values"], 
-#     other_feats = (0, 1), 
-#     save_location = None)
+for i_data in i_datas:
+    X = all_data[f"{i_data}_data"]["X_train"]
+    y = all_data[f"{i_data}_data"]["y_train"]
+#     result_dict = full_data_case1(X, y)
+#     model_performance_bars(result_dict, save_location = f"results/plots/{i_data}_full.png")
+    uni_cut = uniform_cut_case1(
+        X, 
+        y, 
+        models = {
+            "Linear Regression": models["Linear Regression"], 
+            "XGBoost": models["XGBoost"], 
+            "Gradient Boosting": models["Gradient Boosting"],
+            "MLP Regressor": models["MLP Regressor"]
+            }, 
+        max_cuts = 6, 
+        sigma_values = all_data["sigma_values"], 
+        other_feats = (0, 1), 
+        save_location = None)
+    
+
+    for mod in mods:
+        indicator1 = "R2 Score"
+        """
+        Change n_gen
+        """
+        n_gen = 300
+        max_x_len = 6
+        mod = "Gradient Boosting"
+        data_loc = f"results/data/{i_data}_{mod}_{indicator1}_{max_x_len}_.pkl"
+        plot_loc = f"results/plots/uniopt_{i_data}_{mod}_{indicator1}.png"
 
 
+        # data_loc = f"results/data/{i_data}_{mod}_{indicator1}_{max_x_len}_testing.pkl"
+        # plot_loc = None
 
 
-# indicator1 = "R2 Score"
-# mod = "XGBoost"
-# n_gen = 200
-# max_x_len = 6
-# save_loc = f"results/data/{i_data}_{mod}_{indicator1}_{max_x_len}_.pkl"
-# opt_pop_objs = load_history(save_loc)[n_gen]
+        opt_pop_objs = load_history(data_loc)[n_gen]
 
-# opt_cut = opt_cut_case1(
-#         X, y, opt_pop_objs["pop"], opt_pop_objs["obj"], 
-#         models = {
-#         "Decision Tree": models["Decision Tree"], 
-#         "Random Forest": models["Random Forest"], 
-#         "Extra Trees": models["Extra Trees"], 
-#         "XGBoost": models["XGBoost"], 
-#         "Gradient Boosting": models["Gradient Boosting"],
-#         "MLP Regressor": models["MLP Regressor"]
-#         }, 
-#         sigma_values = all_data["sigma_values"], 
-#         other_feats = (0, 1), 
-#         save_location = None, 
-#         discrete_col_index = 0)
+        opt_cut = opt_cut_case1(
+                X, y, opt_pop_objs["pop"], opt_pop_objs["obj"], 
+                models = {
+                "Linear Regression": models["Linear Regression"], 
+                "XGBoost": models["XGBoost"], 
+                "Gradient Boosting": models["Gradient Boosting"],
+                "MLP Regressor": models["MLP Regressor"]
+                }, 
+                sigma_values = all_data["sigma_values"], 
+                other_feats = (0, 1), 
+                save_location = None, 
+                discrete_col_index = 0)
 
-# two_cut_bars(
-#         uni_cut, opt_cut,  
-#         filter_models = True, 
-#         use_acronyms = True, 
-#         figsize=(14, 7), 
-#         width = 0.08, 
-#         gap_fraction = 0.5, save_location = None, dpi = 500, dtype = "val", performance = "R2 Score")
+        two_cut_bars(
+                uni_cut, opt_cut,  
+                filter_models = False, 
+                use_acronyms = True, 
+                figsize=(14, 7), 
+                width = 0.08, 
+                gap_fraction = 0.5, save_location = plot_loc, dpi = 500, dtype = "val", performance = indicator1)
 
 
 
